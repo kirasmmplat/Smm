@@ -1,0 +1,26 @@
+kind = "web"
+previewPath = "/"
+title = "SMM Platform"
+version = "1.0.0"
+id = "artifacts/smm-platform"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = ["/api", "/"]
+localPort = 22001
+
+[services.development]
+run = "pnpm --filter @workspace/smm-platform run dev"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/smm-platform", "run", "build"]
+run = "pnpm --filter @workspace/smm-platform run start"
+
+[services.env]
+PORT = "22001"
+BASE_PATH = "/"
