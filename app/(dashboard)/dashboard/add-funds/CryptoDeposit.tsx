@@ -1,20 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useState as useQrState } from "react";
 
-interface CryptoAddresses {
-  BTC: string | null;
-  ETH: string | null;
-  USDT: string | null;
+interface AddressMap {
+  [key: string]: string | null;
 }
 
 interface CryptoData {
   enabled: boolean;
   minDeposit?: number;
-  addresses?: CryptoAddresses;
+  addresses?: AddressMap;
 }
 
 const COIN_INFO: Record<string, { label: string; network: string; color: string; icon: string }> = {
+  "USDT-TRC20": { label: "Tether USDT", network: "TRC-20 (Tron)", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: "₮" },
+  "USDT-BEP20": { label: "Tether USDT", network: "BEP-20 (BSC)", color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: "₮" },
+  "USDT-ERC20": { label: "Tether USDT", network: "ERC-20 (ETH)", color: "bg-blue-100 text-blue-700 border-blue-200", icon: "₮" },
   BTC: { label: "Bitcoin", network: "Bitcoin Network", color: "bg-orange-100 text-orange-700 border-orange-200", icon: "₿" },
   ETH: { label: "Ethereum", network: "ERC-20", color: "bg-blue-100 text-blue-700 border-blue-200", icon: "Ξ" },
   USDT: { label: "Tether USDT", network: "TRC-20", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: "₮" },
@@ -23,7 +25,7 @@ const COIN_INFO: Record<string, { label: string; network: string; color: string;
 export default function CryptoDeposit() {
   const [data, setData] = useState<CryptoData | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
-  const [selectedCoin, setSelectedCoin] = useState<string>("USDT");
+  const [selectedCoin, setSelectedCoin] = useState<string>("");
 
   useEffect(() => {
     fetch("/api/payments/crypto/addresses")
@@ -31,7 +33,7 @@ export default function CryptoDeposit() {
       .then((d) => {
         setData(d as CryptoData);
         if (d.addresses) {
-          const first = Object.entries(d.addresses as Record<string, string | null>).find(([, v]) => v)?.[0];
+          const first = Object.entries(d.addresses as AddressMap).find(([, v]) => v)?.[0];
           if (first) setSelectedCoin(first);
         }
       })
@@ -49,40 +51,40 @@ export default function CryptoDeposit() {
   const availableCoins = Object.entries(data.addresses).filter(([, addr]) => addr) as [string, string][];
   if (availableCoins.length === 0) return null;
 
-  const currentAddr = data.addresses[selectedCoin as keyof CryptoAddresses];
-  const coinInfo = COIN_INFO[selectedCoin];
+  const currentAddr = data.addresses[selectedCoin];
+  const coinInfo = COIN_INFO[selectedCoin] ?? { label: selectedCoin, network: selectedCoin, color: "bg-violet-100 text-violet-700 border-violet-200", icon: "₮" };
 
   return (
     <div className="space-y-4">
       {data.minDeposit && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
-          ⚠️ الحد الأدنى للإيداع: <strong>${data.minDeposit}</strong> — بعد التحويل، أرسل إيصالاً لفريق الدعم لتأكيد الإيداع
+          ⚠️ الحد الأدنى للإيداع: <strong>${data.minDeposit}</strong>
         </div>
       )}
 
       {/* Coin Selector */}
       <div className="flex gap-2 flex-wrap">
         {availableCoins.map(([coin]) => {
-          const info = COIN_INFO[coin];
+          const info = COIN_INFO[coin] ?? { color: "bg-violet-100 text-violet-700 border-violet-200", icon: "₮", network: coin };
           return (
             <button
               key={coin}
               onClick={() => setSelectedCoin(coin)}
               className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-bold transition-all ${
                 selectedCoin === coin
-                  ? info?.color ?? "bg-violet-100 text-violet-700 border-violet-200"
+                  ? info.color
                   : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
               }`}
             >
-              <span className="text-base">{info?.icon ?? coin}</span>
-              {coin}
+              <span className="text-base">{info.icon}</span>
+              <span>{coin}</span>
             </button>
           );
         })}
       </div>
 
       {/* Address Display */}
-      {currentAddr && coinInfo && (
+      {currentAddr && (
         <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -110,15 +112,9 @@ export default function CryptoDeposit() {
             }`}
           >
             {copied === selectedCoin ? (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                تم النسخ!
-              </>
+              <>✓ تم النسخ!</>
             ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                نسخ العنوان
-              </>
+              <>📋 نسخ العنوان</>
             )}
           </button>
         </div>
@@ -127,7 +123,7 @@ export default function CryptoDeposit() {
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700 space-y-1">
         <p className="font-bold">تعليمات مهمة:</p>
         <ol className="list-decimal list-inside space-y-1">
-          <li>أرسل المبلغ إلى العنوان أعلاه</li>
+          <li>أرسل المبلغ إلى العنوان أعلاه بنفس الشبكة المحددة</li>
           <li>احفظ معرف المعاملة (TX Hash)</li>
           <li>افتح تذكرة دعم مع لقطة الشاشة + TX Hash</li>
           <li>سيتم تأكيد الإيداع خلال ساعة عمل</li>
